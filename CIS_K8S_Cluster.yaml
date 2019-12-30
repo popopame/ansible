@@ -1,0 +1,90 @@
+#This playbook will correct some of the CIS compliant security flaws detected on a cluster by the Kube_Bench solutions
+
+---
+ #Below are the task for the Kubelet , Only executed on the Slaves
+- hosts: kube-nodes
+
+  tasks:
+
+    - name: "2.1.4 Disabling the Read-Only port"
+      lineinfile:
+        backup: yes
+        state: present
+        path: "/var/lib/kubelet/kubelet-config.yaml"
+        insertafter: "EOF"
+        line: "read-only-port: 0"
+
+    - name: "2.1.6 enabling the protect kernel Flag"
+      lineinfile:
+        state: present
+        path: "/var/lib/kubelet/kubelet-config.yaml"
+        insertafter: "EOF"
+        line: "protect-kernel-defaults: true"
+
+    - name: "2.1.9 Tweak some arguments of the kubelet system files , adapt to your needs"
+      lineinfile:
+        state: present
+        path: "/var/lib/kubelet/kubelet-config.yaml"
+        insertafter: "EOF"
+        line: "event-qps: 0"
+
+    - name: "2.2.5/2.2.6 Change the Proxy Kubeconfig ownership/file permission"
+      file:
+        path: "/var/lib/kube-proxy/kubeconfig"
+        owner: root
+        group: root
+        mode: "0644"
+
+#Below are the task  executed on the ApiServer
+- hosts: master01
+
+  tasks:
+
+    - name: "1.1.11 Ensure that the admission control plugin AlwaysPullImages is set"
+      replace:
+        backup: yes
+        path: "/etc/systemd/system/kube-apiserver.service"
+        regexp: '(^.*--enable-admission-plugins=)(.*$)'
+        replace: '\1AlwaysPullImages,\2'
+
+    - name: "1.1.15 Create a log file for the api server"
+      lineinfile:
+        state: present
+        path: "/etc/systemd/system/kube-apiserver.service"
+        insertafter: "ExecStart.*kube-apiserver.*"
+        line: '  --audit-log-path=/var/log/api_audit.log \\'
+
+    - name: "1.1.16 ensure that the audit-log-maxage is set "
+      lineinfile:
+        state: present
+        path: "/etc/systemd/system/kube-apiserver.service"
+        insertafter: "ExecStart.*kube-apiserver.*"
+        line: '  --audit-log-maxage=30 \\'
+
+    - name: "1.1.17 Ensure that the --audit-log-maxbackup argument is set to 10 or as appropriate"
+      lineinfile:
+        state: present
+        path: "/etc/systemd/system/kube-apiserver.service"
+        insertafter: "ExecStart.*kube-apiserver.*"
+        line: '  --audit-log-maxbackup=3 \\'
+
+    - name: "1.1.18 Ensure that the --audit-log-maxsize argument is set to 100 or as appropriate"
+      lineinfile:
+        state: present
+        path: "/etc/systemd/system/kube-apiserver.service"
+        insertafter: "ExecStart.*kube-apiserver.*"
+        line: '  --audit-log-maxsize=100 \\'
+
+    - name: "1.1.24 Ensure that the admission control plugin PodSecurityPolicy is set"
+      replace:
+        backup: yes
+        path: "/etc/systemd/system/kube-apiserver.service"
+        regexp: '(^.*--enable-admission-plugins=)(.*$)'
+        replace: '\1PodSecurityPolicy,\2'
+
+    - name: "1.1.27 Ensure that the admission control plugin ServiceAccount is set"
+      replace:
+        backup: yes
+        path: "/etc/systemd/system/kube-apiserver.service"
+        regexp: '(^.*--enable-admission-plugins=)(.*$)'
+        replace: '\1ServiceAccount,\2'
