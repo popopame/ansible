@@ -1,0 +1,9 @@
+#This playbook will delete the line that block root logon on AWS ubuntu AMI
+---
+- hosts: all
+
+  tasks:
+   - name: "Modify the Line that interfer with the root ssh logon"
+    replace:
+      path: "/root/.ssh/authorized_keys"
+      regexp: "no-port-forwarding,no-agent-forwarding,no-X11-forwarding,command="echo 'Please login as the user \"ubuntu\" rather than the user \"root\".';echo;sleep 10"
